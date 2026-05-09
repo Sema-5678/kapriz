@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Переход в Telegram</title>
+
+  <!--
+    Если хочешь тестировать цель Метрики на этой странице,
+    сюда вставь официальный код счетчика Яндекс.Метрики.
+    Пока можно оставить без Метрики.
+  -->
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 24px;
+      line-height: 1.45;
+    }
+    code {
+      background: #f2f2f2;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+    .box {
+      max-width: 720px;
+      padding: 18px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+    }
+    a.button {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      background: #229ED9;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    pre {
+      white-space: pre-wrap;
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Открываем Telegram</h1>
+
+    <p>Сейчас вы будете перенаправлены в Telegram-бота.</p>
+
+    <p>
+      <a id="botLink" class="button" href="https://t.me/kkaprizbot">
+        Открыть бота
+      </a>
+    </p>
+
+    <h3>Debug-информация</h3>
+    <pre id="debugInfo">Загрузка...</pre>
+  </div>
+
+  <script>
+    const BOT_USERNAME = "kkaprizbot";
+
+    // Поставь сюда ID счетчика Метрики, если будешь тестировать reachGoal.
+    // Например: const METRIKA_COUNTER_ID = 12345678;
+    const METRIKA_COUNTER_ID = null;
+
+    // Название тестовой цели в Метрике.
+    // Цель должна быть типа JavaScript-событие.
+    const METRIKA_GOAL_ID = "dev_redirect_to_bot";
+
+    const params = new URLSearchParams(window.location.search);
+
+    const yclid = params.get("yclid");
+    const debug = params.get("debug") === "1";
+
+    function sanitizeTelegramStart(value) {
+      return String(value || "")
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
+        .slice(0, 60);
+    }
+
+    let startPayload;
+
+    if (yclid) {
+      startPayload = "yd_" + sanitizeTelegramStart(yclid);
+    } else {
+      startPayload = "dev_no_yclid";
+    }
+
+    const botUrl =
+      "https://t.me/" +
+      BOT_USERNAME +
+      "?start=" +
+      encodeURIComponent(startPayload);
+
+    document.getElementById("botLink").href = botUrl;
+
+    document.getElementById("debugInfo").textContent =
+      "Current URL: " + window.location.href + "\n" +
+      "yclid: " + (yclid || "нет") + "\n" +
+      "startPayload: " + startPayload + "\n" +
+      "botUrl: " + botUrl + "\n" +
+      "debug: " + debug;
+
+    // Отправляем тестовую цель в Метрику, если счетчик установлен.
+    // Для этого на странице должен быть вставлен официальный код счетчика.
+    if (METRIKA_COUNTER_ID && typeof ym === "function") {
+      ym(METRIKA_COUNTER_ID, "reachGoal", METRIKA_GOAL_ID);
+    }
+
+    // В debug-режиме не редиректим, чтобы можно было спокойно посмотреть страницу.
+    if (!debug) {
+      setTimeout(() => {
+        window.location.href = botUrl;
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
