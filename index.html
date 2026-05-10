@@ -6,26 +6,22 @@
   <title>Переход в Telegram</title>
 
   <!-- Yandex Metrika -->
-  <script>
-    const COUNTER_ID = 104141748;
-
+  <script type="text/javascript">
     (function(m,e,t,r,i,k,a){
       m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
       m[i].l=1*new Date();
       for (var j = 0; j < document.scripts.length; j++) {
         if (document.scripts[j].src === r) { return; }
       }
-      k=e.createElement(t);
-      a=e.getElementsByTagName(t)[0];
-      k.async=1;
-      k.src=r;
-      a.parentNode.insertBefore(k,a);
+      k=e.createElement(t),a=e.getElementsByTagName(t)[0],
+      k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
     })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
 
-    ym(COUNTER_ID, "init", {
-      clickmap: false,
-      trackLinks: false,
-      accurateTrackBounce: false
+    ym(104141748, "init", {
+      clickmap: true,
+      trackLinks: true,
+      accurateTrackBounce: true,
+      webvisor: true
     });
   </script>
 
@@ -40,27 +36,22 @@
 <body>
   <div style="font-family: Arial, sans-serif; padding: 24px;">
     <h2>Открываем Telegram...</h2>
-    <p id="status">Если переход не произошёл, нажмите кнопку ниже.</p>
+    <p id="status">Подождите пару секунд.</p>
     <p>
-      <a id="manualLink" href="#">Открыть Telegram</a>
+      <a id="manualLink" href="#" style="display:none;">Открыть Telegram вручную</a>
     </p>
   </div>
 
   <script>
+    const COUNTER_ID = 104141748;
     const BOT_USERNAME = "kkaprizbot"; // без @
 
     const GOAL_PAGE_OPEN = "PAGE_OPEN";
     const GOAL_BOT_REDIRECT = "BOT_REDIRECT";
 
-    // Можно уменьшить до 50, если важнее скорость.
-    // Можно увеличить до 500, если важнее точность целей на сайте.
-    const FAST_REDIRECT_DELAY_MS = 250;
-
-    // Fallback на t.me, если tg:// не открыл приложение.
-    const FALLBACK_TO_HTTPS_DELAY_MS = 900;
-
     function getParam(name) {
-      return new URLSearchParams(window.location.search).get(name);
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
     }
 
     function normalizeYclid(value) {
@@ -83,66 +74,61 @@
       return "no_yclid";
     }
 
-    function sendGoalFast(goalName, params = {}) {
-      try {
-        if (typeof ym === "function") {
-          ym(COUNTER_ID, "reachGoal", goalName, params);
-        }
-      } catch (error) {
-        console.warn("Metrika goal error:", goalName, error);
-      }
-    }
+    function sendMetrikaGoal(goalName, params = {}) {
+      return new Promise((resolve) => {
+        let resolved = false;
 
-    function openTelegramFast(tgAppUrl, tgWebUrl) {
-      let appWasOpened = false;
+        const finish = () => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
 
-      document.addEventListener("visibilitychange", function () {
-        if (document.hidden) {
-          appWasOpened = true;
+        // Фолбэк: если Метрика не загрузилась, adblock, ошибка сети и т.д.
+        setTimeout(finish, 1200);
+
+        try {
+          if (typeof ym !== "function") {
+            finish();
+            return;
+          }
+
+          ym(COUNTER_ID, "reachGoal", goalName, params, finish);
+        } catch (error) {
+          console.warn("Metrika goal error:", goalName, error);
+          finish();
         }
       });
-
-      setTimeout(function () {
-        // Сначала пробуем открыть приложение Telegram напрямую.
-        window.location.href = tgAppUrl;
-
-        // Если приложение не открылось, открываем обычную t.me-ссылку.
-        setTimeout(function () {
-          if (!appWasOpened) {
-            window.location.replace(tgWebUrl);
-          }
-        }, FALLBACK_TO_HTTPS_DELAY_MS);
-      }, FAST_REDIRECT_DELAY_MS);
     }
 
-    function main() {
+    async function main() {
       const yclid = normalizeYclid(getParam("yclid"));
       const payload = buildStartPayload();
 
-      const tgWebUrl = `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`;
-      const tgAppUrl = `tg://resolve?domain=${BOT_USERNAME}&start=${encodeURIComponent(payload)}`;
+      const tgUrl = `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`;
 
       const manualLink = document.getElementById("manualLink");
-      manualLink.href = tgWebUrl;
+      manualLink.href = tgUrl;
+      manualLink.style.display = "inline";
 
-      const params = {
+      document.getElementById("status").innerText = "Фиксируем переход и открываем Telegram...";
+
+      // Цель 1: человек реально попал на страницу-прокладку.
+      await sendMetrikaGoal(GOAL_PAGE_OPEN, {
         source: "telegram_redirect_page",
         yclid_present: yclid ? "yes" : "no"
-      };
+      });
 
-      // Эти цели отправляем быстро, не ждём callback.
-      sendGoalFast(GOAL_PAGE_OPEN, params);
-      sendGoalFast(GOAL_BOT_REDIRECT, params);
+      // Цель 2: страница начала редиректить человека в Telegram.
+      await sendMetrikaGoal(GOAL_BOT_REDIRECT, {
+        source: "telegram_redirect_page",
+        yclid_present: yclid ? "yes" : "no"
+      });
 
-      const debugMode = getParam("debug") === "1";
+      document.getElementById("status").innerText = "Открываем Telegram...";
 
-      if (debugMode) {
-        document.getElementById("status").innerText =
-          `DEBUG: редирект выключен. Payload: ${payload}`;
-        return;
-      }
-
-      openTelegramFast(tgAppUrl, tgWebUrl);
+      window.location.replace(tgUrl);
     }
 
     main();
