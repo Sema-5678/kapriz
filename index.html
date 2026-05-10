@@ -2,25 +2,19 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Переход в Telegram</title>
 
   <!-- Yandex Metrika -->
   <script>
-    window.METRIKA_COUNTER_ID = 104141748;
+    const COUNTER_ID = 104141748;
 
     (function(m,e,t,r,i,k,a){
-      m[i]=m[i]||function(){
-        (m[i].a=m[i].a||[]).push(arguments);
-      };
+      m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
       m[i].l=1*new Date();
-
       for (var j = 0; j < document.scripts.length; j++) {
-        if (document.scripts[j].src === r) {
-          return;
-        }
+        if (document.scripts[j].src === r) { return; }
       }
-
       k=e.createElement(t);
       a=e.getElementsByTagName(t)[0];
       k.async=1;
@@ -28,84 +22,41 @@
       a.parentNode.insertBefore(k,a);
     })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
 
-    ym(window.METRIKA_COUNTER_ID, "init", {
+    ym(COUNTER_ID, "init", {
       clickmap: false,
       trackLinks: false,
-      accurateTrackBounce: false,
-      webvisor: false
+      accurateTrackBounce: false
     });
   </script>
 
   <noscript>
     <div>
-      <img
-        src="https://mc.yandex.ru/watch/104141748"
-        style="position:absolute; left:-9999px;"
-        alt=""
-      />
+      <img src="https://mc.yandex.ru/watch/104141748" style="position:absolute; left:-9999px;" alt="" />
     </div>
   </noscript>
   <!-- /Yandex Metrika -->
-
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #ffffff;
-      color: #111111;
-    }
-
-    .wrap {
-      padding: 24px;
-      max-width: 520px;
-      margin: 0 auto;
-      text-align: center;
-    }
-
-    .button {
-      display: inline-block;
-      margin-top: 16px;
-      padding: 14px 20px;
-      border-radius: 12px;
-      background: #229ed9;
-      color: white;
-      text-decoration: none;
-      font-weight: 700;
-    }
-
-    .debug {
-      margin-top: 20px;
-      padding: 12px;
-      background: #f3f3f3;
-      border-radius: 10px;
-      font-size: 14px;
-      text-align: left;
-      word-break: break-all;
-    }
-  </style>
 </head>
 
 <body>
-  <div class="wrap">
+  <div style="font-family: Arial, sans-serif; padding: 24px;">
     <h2>Открываем Telegram...</h2>
-    <p id="status">Подождите пару секунд.</p>
-
-    <a id="manualLink" class="button" href="#">
-      Открыть Telegram
-    </a>
-
-    <div id="debugBox" class="debug" style="display:none;"></div>
+    <p id="status">Если переход не произошёл, нажмите кнопку ниже.</p>
+    <p>
+      <a id="manualLink" href="#">Открыть Telegram</a>
+    </p>
   </div>
 
   <script>
-    const COUNTER_ID = window.METRIKA_COUNTER_ID;
-
-    const BOT_USERNAME = "kkaprizbot";
+    const BOT_USERNAME = "kkaprizbot"; // без @
 
     const GOAL_PAGE_OPEN = "PAGE_OPEN";
     const GOAL_BOT_REDIRECT = "BOT_REDIRECT";
 
+    // Можно уменьшить до 50, если важнее скорость.
+    // Можно увеличить до 500, если важнее точность целей на сайте.
     const FAST_REDIRECT_DELAY_MS = 250;
+
+    // Fallback на t.me, если tg:// не открыл приложение.
     const FALLBACK_TO_HTTPS_DELAY_MS = 900;
 
     function getParam(name) {
@@ -113,15 +64,11 @@
     }
 
     function normalizeYclid(value) {
-      if (!value) {
-        return null;
-      }
+      if (!value) return null;
 
       const cleaned = String(value).trim().replace(/[^0-9]/g, "");
 
-      if (!/^[0-9]{6,40}$/.test(cleaned)) {
-        return null;
-      }
+      if (!/^[0-9]{6,40}$/.test(cleaned)) return null;
 
       return cleaned;
     }
@@ -140,12 +87,9 @@
       try {
         if (typeof ym === "function") {
           ym(COUNTER_ID, "reachGoal", goalName, params);
-          console.log("[METRIKA GOAL]", goalName, params);
-        } else {
-          console.warn("[METRIKA] ym function not found");
         }
       } catch (error) {
-        console.warn("[METRIKA ERROR]", goalName, error);
+        console.warn("Metrika goal error:", goalName, error);
       }
     }
 
@@ -159,8 +103,10 @@
       });
 
       setTimeout(function () {
+        // Сначала пробуем открыть приложение Telegram напрямую.
         window.location.href = tgAppUrl;
 
+        // Если приложение не открылось, открываем обычную t.me-ссылку.
         setTimeout(function () {
           if (!appWasOpened) {
             window.location.replace(tgWebUrl);
@@ -169,64 +115,32 @@
       }, FAST_REDIRECT_DELAY_MS);
     }
 
-    function showDebugInfo(data) {
-      const debugBox = document.getElementById("debugBox");
-
-      debugBox.style.display = "block";
-      debugBox.innerHTML = `
-        <b>DEBUG включён. Редирект остановлен.</b><br><br>
-        yclid: ${data.yclid || "нет"}<br>
-        payload: ${data.payload}<br>
-        tgWebUrl: ${data.tgWebUrl}<br>
-        tgAppUrl: ${data.tgAppUrl}<br>
-      `;
-
-      console.log("DEBUG MODE ON");
-      console.log("yclid:", data.yclid);
-      console.log("payload:", data.payload);
-      console.log("tgWebUrl:", data.tgWebUrl);
-      console.log("tgAppUrl:", data.tgAppUrl);
-    }
-
     function main() {
       const yclid = normalizeYclid(getParam("yclid"));
       const payload = buildStartPayload();
 
-      const tgWebUrl =
-        `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`;
-
-      const tgAppUrl =
-        `tg://resolve?domain=${BOT_USERNAME}&start=${encodeURIComponent(payload)}`;
+      const tgWebUrl = `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`;
+      const tgAppUrl = `tg://resolve?domain=${BOT_USERNAME}&start=${encodeURIComponent(payload)}`;
 
       const manualLink = document.getElementById("manualLink");
       manualLink.href = tgWebUrl;
 
-      const goalParams = {
+      const params = {
         source: "telegram_redirect_page",
         yclid_present: yclid ? "yes" : "no"
       };
 
-      sendGoalFast(GOAL_PAGE_OPEN, goalParams);
-      sendGoalFast(GOAL_BOT_REDIRECT, goalParams);
+      // Эти цели отправляем быстро, не ждём callback.
+      sendGoalFast(GOAL_PAGE_OPEN, params);
+      sendGoalFast(GOAL_BOT_REDIRECT, params);
 
       const debugMode = getParam("debug") === "1";
 
       if (debugMode) {
         document.getElementById("status").innerText =
-          "DEBUG включён. Редиректа не будет.";
-
-        showDebugInfo({
-          yclid,
-          payload,
-          tgWebUrl,
-          tgAppUrl
-        });
-
+          `DEBUG: редирект выключен. Payload: ${payload}`;
         return;
       }
-
-      document.getElementById("status").innerText =
-        "Сейчас откроется Telegram...";
 
       openTelegramFast(tgAppUrl, tgWebUrl);
     }
