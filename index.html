@@ -5,9 +5,34 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Переход в Telegram</title>
 
-  <!-- Не обязательно, но можно оставить счётчик Метрики на странице -->
-  <!-- Замени код ниже на полный код счётчика из Метрики, если хочешь учитывать визит -->
+  <!-- Yandex Metrika -->
+  <script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+      m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+      m[i].l=1*new Date();
+      for (var j = 0; j < document.scripts.length; j++) {
+        if (document.scripts[j].src === r) { return; }
+      }
+      k=e.createElement(t),a=e.getElementsByTagName(t)[0],
+      k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(104141748, "init", {
+      clickmap: true,
+      trackLinks: true,
+      accurateTrackBounce: true,
+      webvisor: true
+    });
+  </script>
+
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/104141748" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  <!-- /Yandex Metrika -->
 </head>
+
 <body>
   <div style="font-family: Arial, sans-serif; padding: 24px;">
     <h2>Открываем Telegram...</h2>
@@ -18,8 +43,11 @@
   </div>
 
   <script>
+    const COUNTER_ID = 104141748;
     const BOT_USERNAME = "kkaprizbot"; // без @
-    const REDIRECT_DELAY_MS = 500;
+
+    const GOAL_PAGE_OPEN = "PAGE_OPEN";
+    const GOAL_BOT_REDIRECT = "BOT_REDIRECT";
 
     function getParam(name) {
       const params = new URLSearchParams(window.location.search);
@@ -29,10 +57,8 @@
     function normalizeYclid(value) {
       if (!value) return null;
 
-      // yclid обычно цифровой. На всякий случай чистим всё лишнее.
       const cleaned = String(value).trim().replace(/[^0-9]/g, "");
 
-      // Чтобы не передавать мусор.
       if (!/^[0-9]{6,40}$/.test(cleaned)) return null;
 
       return cleaned;
@@ -42,29 +68,70 @@
       const yclid = normalizeYclid(getParam("yclid"));
 
       if (yclid) {
-        // Префикс y_ нужен, чтобы бот понимал: это именно yclid.
         return "y_" + yclid;
       }
 
-      // Если человек пришёл не из Яндекса или yclid потерялся.
       return "no_yclid";
     }
 
-    function redirectToBot() {
+    function sendMetrikaGoal(goalName, params = {}) {
+      return new Promise((resolve) => {
+        let resolved = false;
+
+        const finish = () => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
+
+        // Фолбэк: если Метрика не загрузилась, adblock, ошибка сети и т.д.
+        setTimeout(finish, 1200);
+
+        try {
+          if (typeof ym !== "function") {
+            finish();
+            return;
+          }
+
+          ym(COUNTER_ID, "reachGoal", goalName, params, finish);
+        } catch (error) {
+          console.warn("Metrika goal error:", goalName, error);
+          finish();
+        }
+      });
+    }
+
+    async function main() {
+      const yclid = normalizeYclid(getParam("yclid"));
       const payload = buildStartPayload();
+
       const tgUrl = `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`;
 
-      document.getElementById("status").innerText = `Переходим в Telegram. Payload: ${payload}`;
       const manualLink = document.getElementById("manualLink");
       manualLink.href = tgUrl;
       manualLink.style.display = "inline";
 
-      setTimeout(() => {
-        window.location.replace(tgUrl);
-      }, REDIRECT_DELAY_MS);
+      document.getElementById("status").innerText = "Фиксируем переход и открываем Telegram...";
+
+      // Цель 1: человек реально попал на страницу-прокладку.
+      await sendMetrikaGoal(GOAL_PAGE_OPEN, {
+        source: "telegram_redirect_page",
+        yclid_present: yclid ? "yes" : "no"
+      });
+
+      // Цель 2: страница начала редиректить человека в Telegram.
+      await sendMetrikaGoal(GOAL_BOT_REDIRECT, {
+        source: "telegram_redirect_page",
+        yclid_present: yclid ? "yes" : "no"
+      });
+
+      document.getElementById("status").innerText = "Открываем Telegram...";
+
+      window.location.replace(tgUrl);
     }
 
-    redirectToBot();
+    main();
   </script>
 </body>
 </html>
