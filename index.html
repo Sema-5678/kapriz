@@ -5,24 +5,31 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Переход в Telegram</title>
 
-  <!-- Yandex Metrika -->
+  <!-- Yandex.Metrika counter -->
   <script type="text/javascript">
-    (function(m,e,t,r,i,k,a){
-      m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-      m[i].l=1*new Date();
-      for (var j = 0; j < document.scripts.length; j++) {
-        if (document.scripts[j].src === r) { return; }
-      }
-      k=e.createElement(t),a=e.getElementsByTagName(t)[0],
-      k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-    })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+      (function(m,e,t,r,i,k,a){
+          m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+          m[i].l=1*new Date();
+          for (var j = 0; j < document.scripts.length; j++) {
+            if (document.scripts[j].src === r) { return; }
+          }
+          k=e.createElement(t),
+          a=e.getElementsByTagName(t)[0],
+          k.async=1,
+          k.src=r,
+          a.parentNode.insertBefore(k,a)
+      })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=104141748', 'ym');
 
-    ym(104141748, "init", {
-      clickmap: true,
-      trackLinks: true,
-      accurateTrackBounce: true,
-      webvisor: true
-    });
+      ym(104141748, 'init', {
+        ssr: true,
+        webvisor: true,
+        clickmap: true,
+        ecommerce: "dataLayer",
+        referrer: document.referrer,
+        url: location.href,
+        accurateTrackBounce: true,
+        trackLinks: true
+      });
   </script>
 
   <noscript>
@@ -30,36 +37,101 @@
       <img src="https://mc.yandex.ru/watch/104141748" style="position:absolute; left:-9999px;" alt="" />
     </div>
   </noscript>
-  <!-- /Yandex Metrika -->
+  <!-- /Yandex.Metrika counter -->
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #ffffff;
+      color: #111111;
+    }
+
+    .wrap {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 28px;
+      text-align: center;
+    }
+
+    .button {
+      display: inline-block;
+      margin-top: 18px;
+      padding: 14px 22px;
+      border-radius: 12px;
+      background: #229ed9;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .small {
+      margin-top: 18px;
+      font-size: 14px;
+      color: #666666;
+      line-height: 1.4;
+    }
+
+    .debug {
+      display: none;
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f3f3f3;
+      text-align: left;
+      font-size: 13px;
+      word-break: break-all;
+    }
+  </style>
 </head>
 
 <body>
-  <div style="font-family: Arial, sans-serif; padding: 24px;">
+  <div class="wrap">
     <h2>Открываем Telegram...</h2>
-    <p id="status">Подождите пару секунд.</p>
-    <p>
-      <a id="manualLink" href="#" style="display:none;">Открыть Telegram вручную</a>
-    </p>
+    <p id="status">Фиксируем визит.</p>
+
+    <a id="manualLink" class="button" href="#" style="display:none;">
+      Открыть Telegram вручную
+    </a>
+
+    <div class="small">
+      Если Telegram не открылся автоматически, нажмите кнопку выше.
+    </div>
+
+    <div id="debugBox" class="debug"></div>
   </div>
 
   <script>
     const COUNTER_ID = 104141748;
-    const BOT_USERNAME = "kkaprizbot"; // без @
+    const BOT_USERNAME = "kkaprizbot";
 
     const GOAL_PAGE_OPEN = "PAGE_OPEN";
     const GOAL_BOT_REDIRECT = "BOT_REDIRECT";
 
+    // Сколько максимум ждём, пока счётчик станет готов.
+    const METRIKA_READY_TIMEOUT_MS = 7000;
+
+    // Сколько максимум ждём отправку каждой цели.
+    const GOAL_TIMEOUT_MS = 4000;
+
+    // Проверка без редиректа:
+    // https://sema-5678.github.io/kapriz/?yclid=123456789&debug=1
+    const DEBUG_MODE = getParam("debug") === "1";
+
     function getParam(name) {
-      const params = new URLSearchParams(window.location.search);
-      return params.get(name);
+      return new URLSearchParams(window.location.search).get(name);
     }
 
     function normalizeYclid(value) {
-      if (!value) return null;
+      if (!value) {
+        return null;
+      }
 
       const cleaned = String(value).trim().replace(/[^0-9]/g, "");
 
-      if (!/^[0-9]{6,40}$/.test(cleaned)) return null;
+      if (!/^[0-9]{6,40}$/.test(cleaned)) {
+        return null;
+      }
 
       return cleaned;
     }
@@ -74,60 +146,160 @@
       return "no_yclid";
     }
 
+    function buildTelegramUrl() {
+      const payload = buildStartPayload();
+
+      return {
+        payload,
+        url: `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`
+      };
+    }
+
+    function setStatus(text) {
+      document.getElementById("status").innerText = text;
+    }
+
+    function showManualLink(url) {
+      const link = document.getElementById("manualLink");
+      link.href = url;
+      link.style.display = "inline-block";
+    }
+
+    function showDebug(data) {
+      const box = document.getElementById("debugBox");
+
+      box.style.display = "block";
+      box.innerHTML = `
+        <b>DEBUG включён. Редиректа не будет.</b><br><br>
+        yclid: ${data.yclid || "нет"}<br>
+        payload: ${data.payload}<br>
+        tgUrl: ${data.tgUrl}<br>
+        clientID: ${data.clientID || "нет"}<br>
+        pageOpenSent: ${data.pageOpenSent}<br>
+        botRedirectSent: ${data.botRedirectSent}<br>
+      `;
+    }
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function waitForMetrikaReady() {
+      return new Promise((resolve) => {
+        let finished = false;
+
+        function done(clientID) {
+          if (finished) return;
+          finished = true;
+          resolve(clientID || null);
+        }
+
+        const timeout = setTimeout(() => {
+          console.warn("[METRIKA] ready timeout");
+          done(null);
+        }, METRIKA_READY_TIMEOUT_MS);
+
+        function tryGetClientID() {
+          try {
+            if (typeof ym !== "function") {
+              setTimeout(tryGetClientID, 150);
+              return;
+            }
+
+            ym(COUNTER_ID, "getClientID", function(clientID) {
+              clearTimeout(timeout);
+              console.log("[METRIKA] counter ready, ClientID:", clientID);
+              done(clientID);
+            });
+          } catch (error) {
+            console.warn("[METRIKA] getClientID error:", error);
+            setTimeout(tryGetClientID, 250);
+          }
+        }
+
+        tryGetClientID();
+      });
+    }
+
     function sendMetrikaGoal(goalName, params = {}) {
       return new Promise((resolve) => {
-        let resolved = false;
+        let finished = false;
 
-        const finish = () => {
-          if (!resolved) {
-            resolved = true;
-            resolve();
-          }
-        };
+        function done(success) {
+          if (finished) return;
+          finished = true;
+          console.log("[METRIKA] goal finished:", goalName, success);
+          resolve(success);
+        }
 
-        // Фолбэк: если Метрика не загрузилась, adblock, ошибка сети и т.д.
-        setTimeout(finish, 1200);
+        const timeout = setTimeout(() => {
+          console.warn("[METRIKA] goal timeout:", goalName);
+          done(false);
+        }, GOAL_TIMEOUT_MS);
 
         try {
           if (typeof ym !== "function") {
-            finish();
+            console.warn("[METRIKA] ym not found for goal:", goalName);
+            clearTimeout(timeout);
+            done(false);
             return;
           }
 
-          ym(COUNTER_ID, "reachGoal", goalName, params, finish);
+          console.log("[METRIKA] sending goal:", goalName, params);
+
+          ym(COUNTER_ID, "reachGoal", goalName, params, function () {
+            clearTimeout(timeout);
+            done(true);
+          });
         } catch (error) {
-          console.warn("Metrika goal error:", goalName, error);
-          finish();
+          console.warn("[METRIKA] goal error:", goalName, error);
+          clearTimeout(timeout);
+          done(false);
         }
       });
     }
 
     async function main() {
       const yclid = normalizeYclid(getParam("yclid"));
-      const payload = buildStartPayload();
+      const { payload, url: tgUrl } = buildTelegramUrl();
 
-      const tgUrl = `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`;
+      showManualLink(tgUrl);
 
-      const manualLink = document.getElementById("manualLink");
-      manualLink.href = tgUrl;
-      manualLink.style.display = "inline";
+      setStatus("Ждём готовность счётчика Метрики...");
 
-      document.getElementById("status").innerText = "Фиксируем переход и открываем Telegram...";
+      const clientID = await waitForMetrikaReady();
 
-      // Цель 1: человек реально попал на страницу-прокладку.
-      await sendMetrikaGoal(GOAL_PAGE_OPEN, {
+      const goalParams = {
         source: "telegram_redirect_page",
-        yclid_present: yclid ? "yes" : "no"
-      });
+        yclid_present: yclid ? "yes" : "no",
+        yclid: yclid || "",
+        client_id_present: clientID ? "yes" : "no"
+      };
 
-      // Цель 2: страница начала редиректить человека в Telegram.
-      await sendMetrikaGoal(GOAL_BOT_REDIRECT, {
-        source: "telegram_redirect_page",
-        yclid_present: yclid ? "yes" : "no"
-      });
+      setStatus("Фиксируем открытие страницы...");
+      const pageOpenSent = await sendMetrikaGoal(GOAL_PAGE_OPEN, goalParams);
 
-      document.getElementById("status").innerText = "Открываем Telegram...";
+      setStatus("Фиксируем переход в Telegram...");
+      const botRedirectSent = await sendMetrikaGoal(GOAL_BOT_REDIRECT, goalParams);
 
+      if (DEBUG_MODE) {
+        setStatus("DEBUG включён. Редиректа не будет.");
+
+        showDebug({
+          yclid,
+          payload,
+          tgUrl,
+          clientID,
+          pageOpenSent,
+          botRedirectSent
+        });
+
+        return;
+      }
+
+      setStatus("Открываем Telegram...");
+
+      await wait(200);
       window.location.replace(tgUrl);
     }
 
