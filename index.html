@@ -3,38 +3,43 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Переход в Telegram</title>
+  <title>setkapriz</title>
+
+  <link rel="preconnect" href="https://mc.yandex.ru" crossorigin>
+  <link rel="dns-prefetch" href="//mc.yandex.ru">
 
   <!-- Yandex.Metrika counter -->
   <script type="text/javascript">
-      (function(m,e,t,r,i,k,a){
-          m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-          m[i].l=1*new Date();
-          for (var j = 0; j < document.scripts.length; j++) {
-            if (document.scripts[j].src === r) { return; }
-          }
-          k=e.createElement(t),
-          a=e.getElementsByTagName(t)[0],
-          k.async=1,
-          k.src=r,
-          a.parentNode.insertBefore(k,a)
-      })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=104141748', 'ym');
+    (function(m,e,t,r,i,k,a){
+      m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+      m[i].l=1*new Date();
 
-      ym(104141748, 'init', {
-        ssr: true,
-        webvisor: true,
-        clickmap: true,
-        ecommerce: "dataLayer",
-        referrer: document.referrer,
-        url: location.href,
-        accurateTrackBounce: true,
-        trackLinks: true
-      });
+      for (var j = 0; j < document.scripts.length; j++) {
+        if (document.scripts[j].src === r) return;
+      }
+
+      k=e.createElement(t);
+      a=e.getElementsByTagName(t)[0];
+      k.async=1;
+      k.src=r;
+      a.parentNode.insertBefore(k,a);
+    })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js?id=104141748", "ym");
+
+    ym(104141748, "init", {
+      ssr: true,
+      webvisor: true,
+      clickmap: true,
+      ecommerce: "dataLayer",
+      accurateTrackBounce: true,
+      trackLinks: true,
+      referrer: document.referrer,
+      url: location.href
+    });
   </script>
 
   <noscript>
     <div>
-      <img src="https://mc.yandex.ru/watch/104141748" style="position:absolute; left:-9999px;" alt="" />
+      <img src="https://mc.yandex.ru/watch/104141748" style="position:absolute;left:-9999px;" alt="" />
     </div>
   </noscript>
   <!-- /Yandex.Metrika counter -->
@@ -43,32 +48,32 @@
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #ffffff;
-      color: #111111;
+      background: #fff;
+      color: #111;
     }
 
     .wrap {
-      max-width: 540px;
+      max-width: 520px;
       margin: 0 auto;
-      padding: 28px;
+      padding: 32px 20px;
       text-align: center;
     }
 
     .button {
       display: inline-block;
-      margin-top: 18px;
+      margin-top: 16px;
       padding: 14px 22px;
       border-radius: 12px;
       background: #229ed9;
-      color: #ffffff;
+      color: #fff;
       text-decoration: none;
       font-weight: 700;
     }
 
     .small {
-      margin-top: 18px;
+      margin-top: 14px;
       font-size: 14px;
-      color: #666666;
+      color: #666;
       line-height: 1.4;
     }
 
@@ -88,14 +93,14 @@
 <body>
   <div class="wrap">
     <h2>Открываем Telegram...</h2>
-    <p id="status">Фиксируем визит.</p>
+    <p id="status">Переход будет выполнен автоматически.</p>
 
-    <a id="manualLink" class="button" href="#" style="display:none;">
+    <a id="manualLink" class="button" href="#">
       Открыть Telegram вручную
     </a>
 
     <div class="small">
-      Если Telegram не открылся автоматически, нажмите кнопку выше.
+      Если Telegram не открылся автоматически, нажмите кнопку.
     </div>
 
     <div id="debugBox" class="debug"></div>
@@ -105,17 +110,11 @@
     const COUNTER_ID = 104141748;
     const BOT_USERNAME = "kkaprizbot";
 
-    const GOAL_PAGE_OPEN = "PAGE_OPEN";
     const GOAL_BOT_REDIRECT = "BOT_REDIRECT";
 
-    // Сколько максимум ждём, пока счётчик станет готов.
-    const METRIKA_READY_TIMEOUT_MS = 7000;
+    // Главное отличие: короткое ожидание, а не 7+4+4 сек.
+    const MAX_METRIKA_WAIT_MS = 700;
 
-    // Сколько максимум ждём отправку каждой цели.
-    const GOAL_TIMEOUT_MS = 4000;
-
-    // Проверка без редиректа:
-    // https://sema-5678.github.io/kapriz/?yclid=123456789&debug=1
     const DEBUG_MODE = getParam("debug") === "1";
 
     function getParam(name) {
@@ -123,9 +122,7 @@
     }
 
     function normalizeYclid(value) {
-      if (!value) {
-        return null;
-      }
+      if (!value) return null;
 
       const cleaned = String(value).trim().replace(/[^0-9]/g, "");
 
@@ -136,171 +133,123 @@
       return cleaned;
     }
 
-    function buildStartPayload() {
-      const yclid = normalizeYclid(getParam("yclid"));
-
-      if (yclid) {
-        return "y_" + yclid;
-      }
-
-      return "no_yclid";
-    }
-
-    function buildTelegramUrl() {
-      const payload = buildStartPayload();
-
-      return {
-        payload,
-        url: `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`
-      };
-    }
-
-    function setStatus(text) {
-      document.getElementById("status").innerText = text;
-    }
-
-    function showManualLink(url) {
-      const link = document.getElementById("manualLink");
-      link.href = url;
-      link.style.display = "inline-block";
-    }
-
-    function showDebug(data) {
-      const box = document.getElementById("debugBox");
-
-      box.style.display = "block";
-      box.innerHTML = `
-        <b>DEBUG включён. Редиректа не будет.</b><br><br>
-        yclid: ${data.yclid || "нет"}<br>
-        payload: ${data.payload}<br>
-        tgUrl: ${data.tgUrl}<br>
-        clientID: ${data.clientID || "нет"}<br>
-        pageOpenSent: ${data.pageOpenSent}<br>
-        botRedirectSent: ${data.botRedirectSent}<br>
-      `;
-    }
-
     function wait(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    function waitForMetrikaReady() {
-      return new Promise((resolve) => {
-        let finished = false;
+    function buildData() {
+      const params = new URLSearchParams(window.location.search);
 
-        function done(clientID) {
-          if (finished) return;
-          finished = true;
-          resolve(clientID || null);
-        }
+      const yclid = normalizeYclid(params.get("yclid"));
 
-        const timeout = setTimeout(() => {
-          console.warn("[METRIKA] ready timeout");
-          done(null);
-        }, METRIKA_READY_TIMEOUT_MS);
+      const payload = yclid ? "y_" + yclid : "no_yclid";
 
-        function tryGetClientID() {
-          try {
-            if (typeof ym !== "function") {
-              setTimeout(tryGetClientID, 150);
-              return;
-            }
+      const tgUrl =
+        "https://t.me/" +
+        BOT_USERNAME +
+        "?start=" +
+        encodeURIComponent(payload);
 
-            ym(COUNTER_ID, "getClientID", function(clientID) {
-              clearTimeout(timeout);
-              console.log("[METRIKA] counter ready, ClientID:", clientID);
-              done(clientID);
-            });
-          } catch (error) {
-            console.warn("[METRIKA] getClientID error:", error);
-            setTimeout(tryGetClientID, 250);
-          }
-        }
-
-        tryGetClientID();
-      });
+      return {
+        yclid,
+        payload,
+        tgUrl,
+        utm_source: params.get("utm_source") || "",
+        utm_medium: params.get("utm_medium") || "",
+        utm_campaign: params.get("utm_campaign") || "",
+        utm_content: params.get("utm_content") || "",
+        utm_term: params.get("utm_term") || "",
+        referrer: document.referrer || ""
+      };
     }
 
-    function sendMetrikaGoal(goalName, params = {}) {
-      return new Promise((resolve) => {
+    function sendGoalWithShortTimeout(goalName, goalParams) {
+      return new Promise(resolve => {
         let finished = false;
 
         function done(success) {
           if (finished) return;
           finished = true;
-          console.log("[METRIKA] goal finished:", goalName, success);
           resolve(success);
         }
 
         const timeout = setTimeout(() => {
-          console.warn("[METRIKA] goal timeout:", goalName);
           done(false);
-        }, GOAL_TIMEOUT_MS);
+        }, MAX_METRIKA_WAIT_MS);
 
         try {
           if (typeof ym !== "function") {
-            console.warn("[METRIKA] ym not found for goal:", goalName);
             clearTimeout(timeout);
             done(false);
             return;
           }
 
-          console.log("[METRIKA] sending goal:", goalName, params);
-
-          ym(COUNTER_ID, "reachGoal", goalName, params, function () {
+          ym(COUNTER_ID, "reachGoal", goalName, goalParams, function () {
             clearTimeout(timeout);
             done(true);
           });
-        } catch (error) {
-          console.warn("[METRIKA] goal error:", goalName, error);
+        } catch (e) {
           clearTimeout(timeout);
           done(false);
         }
       });
     }
 
+    function showDebug(data, goalSent) {
+      const box = document.getElementById("debugBox");
+
+      box.style.display = "block";
+      box.innerHTML =
+        "<b>DEBUG включён. Редиректа не будет.</b><br><br>" +
+        "tgUrl: " + data.tgUrl + "<br>" +
+        "payload: " + data.payload + "<br>" +
+        "yclid: " + (data.yclid || "нет") + "<br>" +
+        "goalSent: " + goalSent + "<br>" +
+        "utm_source: " + data.utm_source + "<br>" +
+        "utm_medium: " + data.utm_medium + "<br>" +
+        "utm_campaign: " + data.utm_campaign + "<br>" +
+        "utm_content: " + data.utm_content + "<br>" +
+        "utm_term: " + data.utm_term + "<br>" +
+        "referrer: " + data.referrer + "<br>";
+    }
+
     async function main() {
-      const yclid = normalizeYclid(getParam("yclid"));
-      const { payload, url: tgUrl } = buildTelegramUrl();
+      const data = buildData();
 
-      showManualLink(tgUrl);
-
-      setStatus("Ждём готовность счётчика Метрики...");
-
-      const clientID = await waitForMetrikaReady();
+      const manualLink = document.getElementById("manualLink");
+      manualLink.href = data.tgUrl;
 
       const goalParams = {
         source: "telegram_redirect_page",
-        yclid_present: yclid ? "yes" : "no",
-        yclid: yclid || "",
-        client_id_present: clientID ? "yes" : "no"
+        bot: BOT_USERNAME,
+        payload: data.payload,
+        yclid_present: data.yclid ? "yes" : "no",
+        yclid: data.yclid || "",
+        utm_source: data.utm_source,
+        utm_medium: data.utm_medium,
+        utm_campaign: data.utm_campaign,
+        utm_content: data.utm_content,
+        utm_term: data.utm_term,
+        referrer: data.referrer
       };
 
-      setStatus("Фиксируем открытие страницы...");
-      const pageOpenSent = await sendMetrikaGoal(GOAL_PAGE_OPEN, goalParams);
+      // Даем счетчику минимальное время стартануть.
+      await wait(100);
 
-      setStatus("Фиксируем переход в Telegram...");
-      const botRedirectSent = await sendMetrikaGoal(GOAL_BOT_REDIRECT, goalParams);
+      const goalSent = await sendGoalWithShortTimeout(
+        GOAL_BOT_REDIRECT,
+        goalParams
+      );
 
       if (DEBUG_MODE) {
-        setStatus("DEBUG включён. Редиректа не будет.");
+        document.getElementById("status").innerText =
+          "DEBUG включён. Редиректа не будет.";
 
-        showDebug({
-          yclid,
-          payload,
-          tgUrl,
-          clientID,
-          pageOpenSent,
-          botRedirectSent
-        });
-
+        showDebug(data, goalSent);
         return;
       }
 
-      setStatus("Открываем Telegram...");
-
-      await wait(200);
-      window.location.replace(tgUrl);
+      window.location.replace(data.tgUrl);
     }
 
     main();
